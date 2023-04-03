@@ -1009,7 +1009,15 @@ INSERT INTO suppliers (SupplierID, SupplierName, ContactName, Address, City, Pos
 (29, 'Forêts d"érables', 'Chantal Goulet', '148 rue Chasseur', 'Ste-Hyacinthe', 'J2S 7S8', 'Canada', '(514) 555-2955');
 
 --Productun adı, malı göndərənin (şirkətin) adı, kateqoriyanın adını select edən sorğuunu yazın.
-SELECT ProductName,ShipperName,CategoryName FROM products,shippers,categories
+SELECT P.ProductName,S.SupplierName,C.CategoryName
+FROM products as P
+INNER JOIN  suppliers AS S
+ON
+P.SupplierID = S.SupplierID
+INNER JOIN categories AS C
+ON
+P.CategoryID = C.CategoryID
+
 
 
 --Sifarişlərin İD - sini, sifarişin tarixini (formatı belə olsun -> Jun 15 2023), müştərinin adını
@@ -1031,35 +1039,55 @@ ORDER BY OrderDate DESC;
 
 
 --Sifarisin nomresi,mehsulun adi ve miqdari select eden
-SELECT order_details.OrderID,products.ProductName,order_details.Quantity
-FROM order_details,products
-
+SELECT orders.OrderID,products.ProductName,order_details.Quantity
+FROM orders
+INNER JOIN order_details ON orders.OrderID = order_details.OrderID
+INNER JOIN products ON order_details.ProductID = products.ProductID
 
 --"Norske Meierier" şirkətinin məhsullarının sayını və məhsullardan əldə etdiyi gəlirin cəmini göstərən sorğu yazın
-SELECT COUNT(products.ProductID)as 'TotalProduct', SUM(products.Price) as 'Max Value'
-FROM products,suppliers
-WHERE suppliers.SupplierName = 'Norske Meierier'
+SELECT COUNT(p.ProductID)as 'TotalProduct',
+	   SUM(order_details.Quantity * p.Price) as 'Max Value'
+FROM products p
+	   INNER JOIN order_details ON p.ProductID = order_details.ProductID
+	   INNER JOIN suppliers s ON  s.SupplierID = p.SupplierID
+WHERE s.SupplierName = 'Norske Meierier';
 
 
 --Ölkə və şəhərlərə görə istehsal edilən məhsulların sayını göstərən sorğu yazın. Nəticə belə olmalıdır 
 SELECT suppliers.Country,suppliers.City,COUNT(products.ProductID) as 'Mehsul sayi'
-FROM suppliers,products
+FROM products
+INNER JOIN suppliers ON products.SupplierID = suppliers.SupplierID
 GROUP BY suppliers.Country,suppliers.City
+
+
 
 --Sizdən istədiyim adi "Filo Mix" olan məhsuldan edilən sifarişlərin id-sini,tarixini,kim tərəfindən istehsal olunduğu,
 --nə qədər sifariş edildiyi məlumatı və təbii ki birdə məhsulun adını ilk sütunda  böyük hərflərlə çapa verməyinizi istəyirəm
-SELECT suppliers.SupplierName,orders.OrderID,orders.OrderDate,suppliers.Country,order_details.Quantity,UPPER(products.ProductName) AS 'UPPERPRODUCT'
-FROM suppliers,orders,order_details,products
-WHERE products.ProductName = 'Filo Mix'
-
+SELECT o.OrderID,o.OrderDate,s.SupplierName,od.Quantity,UPPER(products.ProductName) as UPPrName
+FROM orders o
+INNER JOIN order_details od ON o.OrderID = od.OrderID
+INNER JOIN products ON od.ProductID = products.ProductID
+INNER JOIN suppliers s ON s.SupplierID  = products.SupplierID
+WHERE UPPER(products.ProductName) = 'FILO MIX'
+	
 --Mənə hər məhsuldan toplam nə qədər sifariş olunduğu məlumatı lazımdır.Yəni nəticə də 1-ci sütunda məhsulun adinı,2-cidə
 --Məhsulun sifarişlərinin sayını,3-cü də sifarişlərdə sifariş edilmiş məhsulun sayını select edin.Nəticədə isə sifarişlərin sayı 2 və ya
 --daha çox olanlari select edin və onları sifariş tarixini ən yenidən ən köhnəyə doğru sıralayın
-SELECT products.ProductName,COUNT(orders.OrderID) AS 'Sifaris sayi',COUNT(order_details.ProductID) AS 'SEMS'
-FROM products,orders,order_details
-GROUP BY orders.CustomerID,products.ProductName,orders.OrderDate
-HAVING COUNT(orders.OrderID)>=2
-ORDER BY orders.OrderDate DESC;
 
 
 
+--Alt sorgular 
+SELECT COUNT(*) as ordersNumber
+FROM orders
+WHERE orders.CustomerID = (
+	SELECT customers.CustomerID
+	FROM customers
+	WHERE customers.CustomerName = 'Howard Snyder'
+	);
+
+SELECT products.ProductName,products.Price
+FROM products
+WHERE products.Price > (
+	SELECT AVG(products.Price)
+	FROM products
+	);
